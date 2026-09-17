@@ -1,2 +1,0 @@
-# yinzhu.github.io
-pro
