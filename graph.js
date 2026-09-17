@@ -90,14 +90,18 @@ export class Constellation {
   this.w=this.viewport.clientWidth;this.h=this.viewport.clientHeight;
   const layout='desktop';
   this.fit=Math.min(this.w/1510,this.h/810,1.2);
-  // Visible half-extent at the current fit, with a buffer to keep each
-  // category cluster (base + child orbit + drift) inside the viewport on
-  // either landscape or portrait. Caps prevent runaway clamp values when
-  // the scene is shrunk to fit a narrow column. Floor values keep the
-  // initial asymmetric layout (x:±455, y:±285) always reachable.
+  // The focused view zooms in past `fit` (see tick: targetScale uses
+  // this.w/990 instead of this.fit). Reserve enough scene-space for a
+  // child at its orbit radius (~305) plus half a work-node (~90px after
+  // translate(-50%,-50%)), so the whole cluster always stays inside the
+  // viewport on narrow phones. Caps clamp to the desktop envelope so the
+  // initial asymmetric layout (x:±455, y:±285) is still reachable on
+  // larger screens.
+  const focusedScale=Math.min(this.w/990,this.h/790,1.18);
+  const useScale=Math.max(this.fit,focusedScale);
   this.bounds={
-   x:clamp((this.w/2)/this.fit-200,380,740),
-   y:clamp((this.h/2)/this.fit-150,290,470)
+   x:clamp((this.w/2)/useScale-395,260,740),
+   y:clamp((this.h/2)/useScale-180,220,470)
   };
   if(layout!==this.layout){
    this.layout=layout;
@@ -144,7 +148,11 @@ export class Constellation {
  cancelDrag(){this.drag=null;this.needsDraw=true;}
  orbit(group,i){
   if(this.selected!==group)return group.children[i].overview;
-  const n=group.children.length;return n===1?{x:290,y:0}:n===2?[{x:-305,y:80},{x:305,y:80}][i]:[{x:-310,y:40},{x:240,y:-200},{x:240,y:185}][i];
+  const n=group.children.length;
+  // Shrink the focused orbit on narrow screens so children stay inside the
+  // viewport after the scale-up. Desktop (w≥700) keeps the full radius.
+  const s=clamp(this.w/700,0.55,1);
+  return n===1?{x:290*s,y:0}:n===2?[{x:-305*s,y:80},{x:305*s,y:80}][i]:[{x:-310*s,y:40},{x:240*s,y:-200},{x:240*s,y:185}][i];
  }
  tick(now){
   this.frame=requestAnimationFrame(this.tick);
