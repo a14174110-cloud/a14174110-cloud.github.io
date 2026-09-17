@@ -104,7 +104,7 @@ export class Constellation {
    this.panel.dataset.layout=layout;
    this.groups.forEach((g,gi)=>{
     const side=g.x<0?-1:1,top=gi<2;
-    const asymmetric=[{x:-430,y:-175},{x:345,y:-270},{x:315,y:300},{x:-300,y:285}][gi];
+    const asymmetric=[{x:-430,y:-175},{x:245,y:-270},{x:215,y:300},{x:-300,y:285}][gi];
     g.base={...asymmetric};
     g.children.forEach((c,i)=>{
      c.overview=g.children.length===1?{x:side*195,y:18}:[{x:side*210,y:-145},{x:-side*95,y:-170},{x:side*210,y:90}][i];
