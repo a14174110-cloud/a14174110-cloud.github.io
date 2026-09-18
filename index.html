@@ -2,6 +2,12 @@
 <html lang="zh-Hant"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090a0b">
 <meta name="description" content="尹筑 / Yin Zhu — 情緒結構藝術。聲音、影像、行為與互動裝置的感知檔案。">
+<!-- Disable HTTP caching for the HTML so the service-worker file is always
+     re-fetched on every visit; the SW itself wipes every cache on activate
+     and re-fetches everything else network-first. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>YinZhu Portfolio</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+TC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap"><link rel="stylesheet" href="/style.css?v=159">
 </head><body class="intro-open">
 <canvas id="ocean" aria-hidden="true"></canvas>
@@ -9,5 +15,5 @@
 <main id="app" tabindex="-1"></main>
 <section id="entrance" aria-label="进入感知档案"><div class="entrance-center"><h1 id="entrance-title"><span class="entrance-line-en ascii-label">/ PORTFOLIO /</span></h1><p class="entrance-name ascii-label">YIN ZHU · 尹築 2026</p><button type="button" id="enter">[ ENTER_ARCHIVE ]</button><div class="entry-load" aria-hidden="true"><span class="entry-load-fill" id="entry-load-fill"></span></div><p class="entry-status mono" aria-live="polite"><span id="entry-status-text">STANDBY · PRESS ENTER</span></p><p class="entrance-intro">在噪聲、行為與演算法之間，情緒驅動震盪。</p></div></section>
 <noscript><p class="noscript">这个作品集需要启用 JavaScript 来显示互动导览。</p></noscript>
-<script src="/boot.js?v=134"></script><script type="module" src="/app.js?v=151"></script>
+<script src="/boot.js?v=135"></script><script type="module" src="/app.js?v=151"></script>
 </body></html>

@@ -6,6 +6,14 @@
   const entrance = document.getElementById('entrance');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Register the cache-clearing service worker as early as possible so it
+  // can intercept the next navigation. A fresh SW activates on the next
+  // page load and wipes every cache, so the user always sees the latest
+  // deployment even if the browser had an old version cached.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
   const finish = () => {
     entrance?.remove();
     // Strip every entrance-related class the gate may have set. Current
