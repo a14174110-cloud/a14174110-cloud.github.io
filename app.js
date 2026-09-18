@@ -56,8 +56,9 @@ const i18n = {
   detailCopy1:'01 / 創作闡釋',
   detailCopy2:'02 / 媒介與機制',
   detailVideoTitle:'[ VIDEO DOCUMENTATION ]',
-  detailVideoWatch:'Watch On Youtube',
-  detailVideoEmpty:'影像紀錄待補充<br>VIDEO NOT YET ADDED',
+ detailVideoPlay:'點擊播放影像 / CLICK TO PLAY',
+ detailVideoWatch:'Watch On Youtube →',
+ detailVideoEmpty:'影像紀錄待補充<br>VIDEO NOT YET ADDED',
   detailAudioTitle:'[ AUDIO EXCERPT ]',
   detailAudioEmpty:'聲音片段待補充<br>AUDIO NOT YET ADDED',
   detailBackWorks:'← 返回作品總覽',
@@ -109,8 +110,9 @@ const i18n = {
   detailCopy1:'01 / Concept',
   detailCopy2:'02 / Medium & Mechanism',
   detailVideoTitle:'[ VIDEO DOCUMENTATION ]',
-  detailVideoWatch:'Watch On Youtube',
-  detailVideoEmpty:'Video documentation pending<br>VIDEO NOT YET ADDED',
+ detailVideoPlay:'Click to play',
+ detailVideoWatch:'Watch On Youtube →',
+ detailVideoEmpty:'Video documentation pending<br>VIDEO NOT YET ADDED',
   detailAudioTitle:'[ AUDIO EXCERPT ]',
   detailAudioEmpty:'Audio excerpt pending<br>AUDIO NOT YET ADDED',
   detailBackWorks:'← Back to works overview',
@@ -250,7 +252,7 @@ function detail(w){
  const title=tx(w,'title'),en=tx(w,'en'),year=tx(w,'year'),type=tx(w,'type'),tags=w.tags.join(' / '),lead=tx(w,'lead');
  const concept=tx(w,'concept'),tech=tx(w,'tech');
  app.innerHTML=`<article class="detail detail-enter"><a class="back-link" href="#/works?field=${w.category}">${t('detailBack')}</a><header class="detail-top"><p class="eyebrow">WORK ${String(index+1).padStart(2,'0')} / ${year}</p><h1>${title}</h1><p class="english">${en}</p><div class="detail-meta"><span>${type}</span><span>${tags}</span></div><p class="detail-lead">${lead}</p></header><figure class="detail-image"><div class="media" data-media="${w.id}"></div><figcaption>${w.image?t('detailFigcaption'):t('detailFigcaptionPending')}</figcaption></figure><section class="detail-copy"><h2>${t('detailCopy1')}</h2><div>${concept.map(p=>`<p>${p}</p>`).join('')}</div></section><section class="detail-copy"><h2>${t('detailCopy2')}</h2><div><p>${tech}</p></div></section><div class="media-slots"><section class="media-slot"><h2 class="mono">${t('detailVideoTitle')}</h2>${w.video?`<video controls preload="metadata" src="${w.video}"></video>`:`<p>${t('detailVideoEmpty')}</p>`}</section><section class="media-slot"><h2 class="mono">${t('detailAudioTitle')}</h2>${w.audio?`<audio controls preload="metadata" src="${w.audio}"></audio>`:`<p>${t('detailAudioEmpty')}</p>`}</section></div><nav class="detail-nav"><a href="#/works">${t('detailBackWorks')}</a><a href="#/works/${next.id}"><span>${t('detailNext')}</span><span>${next.title} →</span></a></nav></article>`;
- app.querySelector('.detail-image').classList.toggle('natural-main',Boolean(w.mainNatural));const slots=app.querySelector('.media-slots');if(w.video){const sep=w.video.includes('?')?'&':'?';const watchUrl=(w.video.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/)||[])[1];slots.innerHTML=`<section class="media-slot media-video"><h2 class="mono">${t('detailVideoTitle')}</h2><iframe src="${w.video}${sep}playsinline=1" title="${title} 影像记录" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen playsinline></iframe>${watchUrl?`<a class="video-watch" href="https://www.youtube.com/watch?v=${watchUrl}" target="_blank" rel="noopener">${t('detailVideoWatch')} →</a>`:''}</section>`;}else slots.remove();if(w.hideTech)app.querySelectorAll('.detail-copy')[1]?.remove();
+ app.querySelector('.detail-image').classList.toggle('natural-main',Boolean(w.mainNatural));const slots=app.querySelector('.media-slots');if(w.video){const sep=w.video.includes('?')?'&':'?';const watchUrl=(w.video.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/)||[])[1];slots.innerHTML=`<section class="media-slot media-video"><h2 class="mono">${t('detailVideoTitle')}</h2><button class="video-poster" type="button" aria-label="${t('detailVideoPlay')}"><span class="video-poster-play" aria-hidden="true">▶</span><span class="video-poster-label mono">${t('detailVideoPlay')}</span></button>${watchUrl?`<a class="video-watch" href="https://www.youtube.com/watch?v=${watchUrl}" target="_blank" rel="noopener">${t('detailVideoWatch')}</a>`:''}</section>`;const poster=slots.querySelector('.video-poster');poster.addEventListener('click',()=>{const iframe=document.createElement('iframe');iframe.src=`${w.video}${sep}playsinline=1&autoplay=1`;iframe.title=`${title} 影像记录`;iframe.loading='lazy';iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');iframe.setAttribute('allowfullscreen','');iframe.setAttribute('playsinline','');poster.replaceWith(iframe);},{once:true});}else slots.remove();if(w.hideTech)app.querySelectorAll('.detail-copy')[1]?.remove();
  if(w.gallery?.length){const gallery=document.createElement('section');gallery.className='detail-gallery';gallery.setAttribute('aria-label',`${title} image archive`);gallery.innerHTML=`<div class="gallery-heading"><span class="eyebrow">${t('detailGalleryHeading')}</span><span class="mono">${String(w.gallery.length).padStart(2,'0')} VIEWS</span></div><div class="gallery-grid">${w.gallery.map((_,i)=>`<figure class="gallery-item"><div class="media" data-gallery="${i}"></div><figcaption class="mono">[ IMAGE ${String(i+2).padStart(2,'0')} ]</figcaption></figure>`).join('')}</div>`;app.querySelector('.detail-copy').after(gallery);}
  import('./media.js').then(({mountMedia})=>{const tasks=[];const host=app.querySelector(`[data-media="${w.id}"]`);if(host)tasks.push(mountMedia(host,w,false));app.querySelectorAll('[data-gallery]').forEach(host=>tasks.push(mountMedia(host,{...w,image:w.gallery[Number(host.dataset.gallery)]},false)));Promise.all(tasks).then(()=>{const gallery=app.querySelector('.gallery-grid');if(gallery)bindGalleryToActiveImage(gallery);});});
  typeDetailText();wave?.setScene(2);
