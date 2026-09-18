@@ -1,11 +1,18 @@
 // ASCII-only strokes are arranged as a loose, drifting calligraphic hand.
 const glyphs=" .,'`~/:;|\\^il";
 const hash=n=>{const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s);};
-// Same fallback chain as media.js — keep both files in sync if you
-// change the order. Backgrounds are served from the same GitHub repo
-// (assets/background/bkg_*.png), so the same China-friendly mirror
-// sequence applies:
-//   jsdmirror.com → cdn.jsdelivr.net → yinzhu.site
+// Background calligraphy fallback chain.
+//
+// 1. bkg-inline.js  — pre-embedded base64 copies of bkg_1.png and
+//   bkg_2.png. Loaded as a module so the bytes travel with the JS
+//   bundle (which itself loads fine from yinzhu.site), and bypass the
+//   image binary path entirely. This is the only path that survives
+//   when an ISP blocks every image CDN including GitHub Pages.
+//
+// 2. CDN chain     — jsdmirror.com → cdn.jsdelivr.net → yinzhu.site
+//   for users on networks where the CDN images actually arrive.
+let inlineBackgrounds=null;
+const inlineBackgroundsReady=import('./bkg-inline.js').then(mod=>{inlineBackgrounds=mod;return mod;}).catch(()=>{inlineBackgrounds={BKG_1:'',BKG_2:''};return inlineBackgrounds;});
 const CDN_SOURCES=[
  {test:u=>u.includes('cdn.jsdmirror.com')||u.includes('cdn.jsdelivr.net'),build:u=>u.replace('cdn.jsdelivr.net','cdn.jsdmirror.com')},
  {test:u=>u.includes('cdn.jsdmirror.com')||u.includes('cdn.jsdelivr.net'),build:u=>u.replace('cdn.jsdmirror.com','cdn.jsdelivr.net')},
@@ -15,41 +22,39 @@ function altUrl(url){
  for(const step of CDN_SOURCES){if(step.test(url)){const next=step.build(url);if(next&&next!==url)return next;}}
  return '';
 }
-function loadWithFallback(path,timeout=8000){
- const primary='https://cdn.jsdmirror.com/gh/a14174110-cloud/a14174110-cloud.github.io@main'+path;
- return new Promise((resolve,reject)=>{
-  const tryLoad=(src)=>new Promise((ok,fail)=>{
-   // crossOrigin='anonymous' is critical — we draw the image into a
-   // canvas and then read pixels with getImageData(). Without it,
-   // the canvas is marked "tainted" on a cross-origin load and any
-   // getImageData() call throws SecurityError, which was the reason
-   // background calligraphy silently disappeared.
-   const img=new Image();
-   img.crossOrigin='anonymous';
-   let done=false;
-   const finish=(fn)=>{if(done)return;done=true;fn();};
-   img.onload=()=>finish(()=>ok(img));
-   img.onerror=()=>finish(()=>fail());
-   const timer=setTimeout(()=>finish(()=>fail()),timeout);
-   const wOnload=img.onload,wOnerror=img.onerror;
-   img.onload=()=>{clearTimeout(timer);wOnload();};
-   img.onerror=()=>{clearTimeout(timer);wOnerror();};
-   img.src=src;
+function loadWithFallback(path,name,timeout=8000){
+ // path is only used for CDN URL construction; name selects the inline copy.
+ // Inline data: URL is tried first, so if it loads we never hit the network.
+ return inlineBackgroundsReady.then(inline=>{
+  const sources=inline&&inline[name]?[inline[name]]:[];
+  // Build CDN chain after the inline copy.
+  let current='https://cdn.jsdmirror.com/gh/a14174110-cloud/a14174110-cloud.github.io@main'+path;
+  while(true){sources.push(current);const next=altUrl(current);if(!next)break;current=next;}
+  return new Promise((resolve,reject)=>{
+   let i=0;
+   const tryOne=()=>{
+    const src=sources[i++];
+    if(!src){reject(new Error('all sources failed for '+path));return;}
+    const img=new Image();
+    // crossOrigin='anonymous' is critical — we draw the image into a
+    // canvas and then read pixels with getImageData(). Without it,
+    // the canvas is marked "tainted" on a cross-origin load and any
+    // getImageData() call throws SecurityError, which was the reason
+    // background calligraphy silently disappeared. Inline data: URLs
+    // don't need this, but setting it is harmless for them.
+    img.crossOrigin='anonymous';
+    let done=false;
+    const finish=(fn)=>{if(done)return;done=true;fn();};
+    img.onload=()=>finish(()=>resolve(img));
+    img.onerror=()=>finish(()=>tryOne());
+    const timer=setTimeout(()=>finish(()=>tryOne()),timeout);
+    const wOnload=img.onload,wOnerror=img.onerror;
+    img.onload=()=>{clearTimeout(timer);wOnload();};
+    img.onerror=()=>{clearTimeout(timer);wOnerror();};
+    img.src=src;
+   };
+   tryOne();
   });
-  let current=primary;
-  (async()=>{
-   while(true){
-    try{
-     const img=await tryLoad(current);
-     resolve(img);
-     return;
-    }catch{
-     const next=altUrl(current);
-     if(!next){reject(new Error('all sources failed for '+path));return;}
-     current=next;
-    }
-   }
-  })();
  });
 }
 export class WaveField {
@@ -80,7 +85,7 @@ export class WaveField {
   this.drawOnce=true;
  }
  loadArtwork(){
-  loadWithFallback('/assets/background/bkg_1.png').then(image=>{
+  loadWithFallback('/assets/background/bkg_1.png','BKG_1').then(image=>{
    // Use the source image's natural resolution for the working canvas so the
    // calligraphy doesn't get squished into 180×240 and then upscaled back to
    // viewport size — that's what made it look blurry. artCanvas now mirrors
@@ -98,7 +103,7 @@ export class WaveField {
   }).catch(()=>{console.warn('bkg_1.png 加载失败（作品总览）');this._markLoaded();});
  }
  loadHomeArtwork(){
-  loadWithFallback('/assets/background/bkg_1.png').then(image=>{
+  loadWithFallback('/assets/background/bkg_1.png','BKG_1').then(image=>{
    this.homeImage=image;
    // Match the source resolution 1:1 (previously 240px wide — caused blur).
    this.homeCanvas.width=image.naturalWidth;
@@ -117,7 +122,7 @@ export class WaveField {
   }).catch(()=>{console.warn('bkg_1.png 加载失败');this._markLoaded();});
  }
  loadContactArtwork(){
-  loadWithFallback('/assets/background/bkg_2.png').then(image=>{
+  loadWithFallback('/assets/background/bkg_2.png','BKG_2').then(image=>{
    // Same 1:1 resolution fix — previous 180×240 canvas caused severe blur.
    this.contactCanvas.width=image.naturalWidth;
    this.contactCanvas.height=image.naturalHeight;
