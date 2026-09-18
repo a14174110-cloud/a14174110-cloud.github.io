@@ -1,26 +1,31 @@
 const cache = new Map();
 function xml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
-// GitHub Pages is the original (and authoritative) source for images.
-// jsDelivr is the primary delivery CDN because GitHub Pages is throttled
-// or blocked for image traffic in some regions (notably mainland China).
-// If jsDelivr fails or is blocked at the visitor's network, fall back to
-// the GitHub Pages URL — same file, different origin.
-const PRIMARY_HOST='cdn.jsdelivr.net';
-const FALLBACK_HOST='yinzhu.site';
-function altSource(url){
- if(!url||!url.includes(PRIMARY_HOST))return url;
- try{
-  const u=new URL(url);
-  u.host=FALLBACK_HOST;
-  return u.toString();
- }catch{return url;}
+// Image CDN fallback chain. Order matters — first source that responds is used.
+// 1. cdn.jsdmirror.com — jsDelivr China mirror, usually reachable without VPN
+// 2. cdn.jsdelivr.net — international jsDelivr
+// 3. yinzhu.site — GitHub Pages origin (works for HTML/JS, image traffic varies)
+const CDN_SOURCES=[
+ {test:u=>u.includes('cdn.jsdmirror.com')||u.includes('cdn.jsdelivr.net'),build:u=>u.replace('cdn.jsdelivr.net','cdn.jsdmirror.com')},
+ {test:u=>u.includes('cdn.jsdmirror.com')||u.includes('cdn.jsdelivr.net'),build:u=>u.replace('cdn.jsdmirror.com','cdn.jsdelivr.net')},
+ {test:u=>/^https?:\/\//.test(u),build:u=>{try{const x=new URL(u);x.host='yinzhu.site';return x.toString();}catch{return '';}}}
+];
+function nextSource(url){
+ for(const step of CDN_SOURCES){if(step.test(url)){const next=step.build(url);if(next&&next!==url)return next;}}
+ return '';
 }
-function loadImage(source){
+function loadImage(source,timeout=8000){
  return new Promise((resolve,reject)=>{
   const image=new Image();
   image.crossOrigin='anonymous';
-  image.onload=()=>resolve(image);
-  image.onerror=()=>reject(new Error('image load failed: '+source));
+  let done=false;
+  const finish=(fn)=>{if(done)return;done=true;fn();};
+  image.onload=()=>finish(()=>resolve(image));
+  image.onerror=()=>finish(()=>reject(new Error('image load failed: '+source)));
+  const timer=setTimeout(()=>finish(()=>reject(new Error('image timeout: '+source))),timeout);
+  // Wrap onload/onerror to clear the timer.
+  const wrappedOnload=image.onload,wrappedOnerror=image.onerror;
+  image.onload=()=>{clearTimeout(timer);wrappedOnload();};
+  image.onerror=()=>{clearTimeout(timer);wrappedOnerror();};
   image.src=source;
  });
 }
@@ -32,14 +37,25 @@ export function placeholder(work){
 }
 async function prepare(work){
  const primary=work.image||placeholder(work);
- // Try jsDelivr first, fall back to GitHub Pages on any network error.
- let image;
+ // Walk the CDN chain until one source responds. Each step is given
+ // an 8 s timeout so a stuck/blocked host doesn't stall the page.
+ let image,source=primary;
  try{
   image=await loadImage(primary);
  }catch(error){
-  const fallback=altSource(primary);
-  if(fallback===primary||!fallback)throw error;
-  image=await loadImage(fallback);
+  let current=primary;
+  while(true){
+   const next=nextSource(current);
+   if(!next)throw error;
+   try{
+    image=await loadImage(next);
+    source=next;
+    break;
+   }catch(inner){
+    current=next;
+    error=inner;
+   }
+  }
  }
  const raw=document.createElement('canvas');raw.width=96;raw.height=60;
  const ctx=raw.getContext('2d',{willReadFrequently:true});
@@ -56,7 +72,7 @@ async function prepare(work){
   out.fillStyle=`rgb(${78+l*155|0},${92+l*150|0},${75+l*140|0})`;
   out.fillText(chars[level],x*8,y*8);
  }
- return {image,ascii,source:primary};
+ return {image,ascii,source};
 }
 export async function mountMedia(host,work,withAscii=true){
  host.setAttribute('aria-label',work.image?`${work.title} 作品图片`:`${work.title} 图片占位，待补充原图`);
