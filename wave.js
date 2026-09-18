@@ -19,7 +19,13 @@ function loadWithFallback(path,timeout=8000){
  const primary='https://cdn.jsdmirror.com/gh/a14174110-cloud/a14174110-cloud.github.io@main'+path;
  return new Promise((resolve,reject)=>{
   const tryLoad=(src)=>new Promise((ok,fail)=>{
+   // crossOrigin='anonymous' is critical — we draw the image into a
+   // canvas and then read pixels with getImageData(). Without it,
+   // the canvas is marked "tainted" on a cross-origin load and any
+   // getImageData() call throws SecurityError, which was the reason
+   // background calligraphy silently disappeared.
    const img=new Image();
+   img.crossOrigin='anonymous';
    let done=false;
    const finish=(fn)=>{if(done)return;done=true;fn();};
    img.onload=()=>finish(()=>ok(img));
