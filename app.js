@@ -193,6 +193,51 @@ function bindGalleryToActiveImage(gallery){
  const update=()=>{frame=0;const center=gallery.scrollLeft+gallery.clientWidth/2;let active=items[0],distance=Infinity;items.forEach(item=>{const d=Math.abs(item.offsetLeft+item.offsetWidth/2-center);if(d<distance){distance=d;active=item;}});gallery.style.height=`${Math.ceil(active.offsetHeight+20)}px`;};
  const schedule=()=>{if(!frame)frame=requestAnimationFrame(update);};
  gallery.addEventListener('scroll',schedule,{passive:true});
+ // Track touch start so we know the finger's release direction.
+ let touchStartX=null,touchStartY=null,touchStartScroll=0,swiping=false;
+ gallery.addEventListener('touchstart',e=>{
+  const t=e.touches[0];
+  touchStartX=t.clientX;touchStartY=t.clientY;touchStartScroll=gallery.scrollLeft;swiping=true;
+ },{passive:true});
+ // Snap to nearest when scrolling settles so a single swipe can't ride
+ // past several items. Reduce the debounce — we want the snap to engage
+ // while momentum is still strong.
+ const snapTo=(index)=>{
+  if(index<0)index=0;if(index>=items.length)index=items.length-1;
+  const target=items[index].offsetLeft+items[index].offsetWidth/2-gallery.clientWidth/2;
+  gallery.scrollTo({left:target,behavior:'smooth'});
+ };
+ const findNearest=()=>{
+  const center=gallery.scrollLeft+gallery.clientWidth/2;
+  let nearest=0,distance=Infinity;
+  items.forEach((item,i)=>{const d=Math.abs(item.offsetLeft+item.offsetWidth/2-center);if(d<distance){distance=d;nearest=i;}});
+  return nearest;
+ };
+ const snapTimer={id:null};
+ const scheduleSettleSnap=()=>{
+  if(snapTimer.id)clearTimeout(snapTimer.id);
+  snapTimer.id=setTimeout(()=>snapTo(findNearest()),90);
+ };
+ gallery.addEventListener('scroll',scheduleSettleSnap,{passive:true});
+ // On finger lift, lock the swipe to a single step in the drag direction.
+ // This is what makes the gallery feel "damped" — one swipe = one image.
+ gallery.addEventListener('touchend',e=>{
+  if(!swiping||touchStartX===null){swiping=false;return;}
+  const t=e.changedTouches[0];
+  const dx=touchStartX-t.clientX,dy=touchStartY-t.clientY;
+  touchStartX=touchStartY=null;swiping=false;
+  // Only treat it as a horizontal swipe if motion is dominantly X.
+  if(Math.abs(dx)<Math.abs(dy)||Math.abs(dx)<24){return;}
+  const startCenter=touchStartScroll+gallery.clientWidth/2;
+  let active=0,distance=Infinity;
+  items.forEach((item,i)=>{const d=Math.abs(item.offsetLeft+item.offsetWidth/2-startCenter);if(d<distance){distance=d;active=i;}});
+  // Step exactly one image in the swipe direction; clamp to bounds.
+  const next=dx>0?Math.min(items.length-1,active+1):Math.max(0,active-1);
+  if(snapTimer.id)clearTimeout(snapTimer.id);
+  snapTo(next);
+  // After the snap finishes, make sure height updates to the new image.
+  setTimeout(()=>update(),420);
+ },{passive:true});
  const resize=new ResizeObserver(schedule);resize.observe(gallery);items.forEach(item=>resize.observe(item));gallery._galleryResize=resize;schedule();
 }
 function typeDetailText(){
