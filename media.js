@@ -1,5 +1,29 @@
 const cache = new Map();
 function xml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
+// GitHub Pages is the original (and authoritative) source for images.
+// jsDelivr is the primary delivery CDN because GitHub Pages is throttled
+// or blocked for image traffic in some regions (notably mainland China).
+// If jsDelivr fails or is blocked at the visitor's network, fall back to
+// the GitHub Pages URL — same file, different origin.
+const PRIMARY_HOST='cdn.jsdelivr.net';
+const FALLBACK_HOST='yinzhu.site';
+function altSource(url){
+ if(!url||!url.includes(PRIMARY_HOST))return url;
+ try{
+  const u=new URL(url);
+  u.host=FALLBACK_HOST;
+  return u.toString();
+ }catch{return url;}
+}
+function loadImage(source){
+ return new Promise((resolve,reject)=>{
+  const image=new Image();
+  image.crossOrigin='anonymous';
+  image.onload=()=>resolve(image);
+  image.onerror=()=>reject(new Error('image load failed: '+source));
+  image.src=source;
+ });
+}
 export function placeholder(work){
  const label=xml(work.id.toUpperCase());
  // An explicitly labelled calibration plate, never represented as a work photograph.
@@ -7,8 +31,16 @@ export function placeholder(work){
  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 }
 async function prepare(work){
- const source=work.image||placeholder(work);
- const image=new Image();image.crossOrigin='anonymous';image.src=source;await image.decode();
+ const primary=work.image||placeholder(work);
+ // Try jsDelivr first, fall back to GitHub Pages on any network error.
+ let image;
+ try{
+  image=await loadImage(primary);
+ }catch(error){
+  const fallback=altSource(primary);
+  if(fallback===primary||!fallback)throw error;
+  image=await loadImage(fallback);
+ }
  const raw=document.createElement('canvas');raw.width=96;raw.height=60;
  const ctx=raw.getContext('2d',{willReadFrequently:true});
  const ratio=Math.max(96/image.width,60/image.height);
@@ -24,7 +56,7 @@ async function prepare(work){
   out.fillStyle=`rgb(${78+l*155|0},${92+l*150|0},${75+l*140|0})`;
   out.fillText(chars[level],x*8,y*8);
  }
- return {image,ascii,source};
+ return {image,ascii,source:primary};
 }
 export async function mountMedia(host,work,withAscii=true){
  host.setAttribute('aria-label',work.image?`${work.title} 作品图片`:`${work.title} 图片占位，待补充原图`);
