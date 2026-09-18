@@ -1,6 +1,51 @@
 // ASCII-only strokes are arranged as a loose, drifting calligraphic hand.
 const glyphs=" .,'`~/:;|\\^il";
 const hash=n=>{const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+// Same fallback chain as media.js — keep both files in sync if you
+// change the order. Backgrounds are served from the same GitHub repo
+// (assets/background/bkg_*.png), so the same China-friendly mirror
+// sequence applies:
+//   jsdmirror.com → cdn.jsdelivr.net → yinzhu.site
+const CDN_SOURCES=[
+ {test:u=>u.includes('cdn.jsdmirror.com')||u.includes('cdn.jsdelivr.net'),build:u=>u.replace('cdn.jsdelivr.net','cdn.jsdmirror.com')},
+ {test:u=>u.includes('cdn.jsdmirror.com')||u.includes('cdn.jsdelivr.net'),build:u=>u.replace('cdn.jsdmirror.com','cdn.jsdelivr.net')},
+ {test:u=>/^https?:\/\//.test(u),build:u=>{try{const x=new URL(u);x.host='yinzhu.site';return x.toString();}catch{return '';}}}
+];
+function altUrl(url){
+ for(const step of CDN_SOURCES){if(step.test(url)){const next=step.build(url);if(next&&next!==url)return next;}}
+ return '';
+}
+function loadWithFallback(path,timeout=8000){
+ const primary='https://cdn.jsdmirror.com/gh/a14174110-cloud/a14174110-cloud.github.io@main'+path;
+ return new Promise((resolve,reject)=>{
+  const tryLoad=(src)=>new Promise((ok,fail)=>{
+   const img=new Image();
+   let done=false;
+   const finish=(fn)=>{if(done)return;done=true;fn();};
+   img.onload=()=>finish(()=>ok(img));
+   img.onerror=()=>finish(()=>fail());
+   const timer=setTimeout(()=>finish(()=>fail()),timeout);
+   const wOnload=img.onload,wOnerror=img.onerror;
+   img.onload=()=>{clearTimeout(timer);wOnload();};
+   img.onerror=()=>{clearTimeout(timer);wOnerror();};
+   img.src=src;
+  });
+  let current=primary;
+  (async()=>{
+   while(true){
+    try{
+     const img=await tryLoad(current);
+     resolve(img);
+     return;
+    }catch{
+     const next=altUrl(current);
+     if(!next){reject(new Error('all sources failed for '+path));return;}
+     current=next;
+    }
+   }
+  })();
+ });
+}
 export class WaveField {
  constructor(canvas,still){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.still=still;this.scene=0;this.sceneFrom=0;this.sceneTo=0;this.sceneMix=1;this.points=[];this.trail=[];this.last=0;this.elapsed=0;this.lastPointer=null;this.frame=0;this.pullStart=null;this.settleStart=null;this.meanCost=0;this.audioLevel=0;this.analyser=null;this.audioData=null;this.artOpacity=0;
@@ -29,8 +74,7 @@ export class WaveField {
   this.drawOnce=true;
  }
  loadArtwork(){
-  const image=new Image();
-  image.onload=()=>{
+  loadWithFallback('/assets/background/bkg_1.png').then(image=>{
    // Use the source image's natural resolution for the working canvas so the
    // calligraphy doesn't get squished into 180×240 and then upscaled back to
    // viewport size — that's what made it look blurry. artCanvas now mirrors
@@ -45,13 +89,10 @@ export class WaveField {
    this.artDisplay=this.artCanvas;
    this.drawOnce=true;
    this._markLoaded();
-  };
-  image.onerror=()=>{console.warn('bkg_1.png 加载失败（作品总览）');this._markLoaded();};
-  image.src='/assets/background/bkg_1.png';
+  }).catch(()=>{console.warn('bkg_1.png 加载失败（作品总览）');this._markLoaded();});
  }
  loadHomeArtwork(){
-  const image=new Image();
-  image.onload=()=>{
+  loadWithFallback('/assets/background/bkg_1.png').then(image=>{
    this.homeImage=image;
    // Match the source resolution 1:1 (previously 240px wide — caused blur).
    this.homeCanvas.width=image.naturalWidth;
@@ -67,13 +108,10 @@ export class WaveField {
    this.homeData=this.homeDisplay.getContext('2d').getImageData(0,0,this.homeDisplay.width,this.homeDisplay.height).data;
    this.drawOnce=true;
    this._markLoaded();
-  };
-  image.onerror=()=>{console.warn('bkg_1.png 加载失败');this._markLoaded();};
-  image.src='/assets/background/bkg_1.png';
+  }).catch(()=>{console.warn('bkg_1.png 加载失败');this._markLoaded();});
  }
  loadContactArtwork(){
-  const image=new Image();
-  image.onload=()=>{
+  loadWithFallback('/assets/background/bkg_2.png').then(image=>{
    // Same 1:1 resolution fix — previous 180×240 canvas caused severe blur.
    this.contactCanvas.width=image.naturalWidth;
    this.contactCanvas.height=image.naturalHeight;
@@ -88,9 +126,7 @@ export class WaveField {
    this.contactDisplay=this.contactCanvas;
    this.drawOnce=true;
    this._markLoaded();
-  };
-  image.onerror=()=>{console.warn('bkg_2.png 加载失败');this._markLoaded();};
-  image.src='/assets/background/bkg_2.png';
+  }).catch(()=>{console.warn('bkg_2.png 加载失败');this._markLoaded();});
  }
  // Pre-bake a white-on-black inverted version of the source canvas so we
  // don't rely on canvas filter: invert(1) — that property is inconsistent
