@@ -11,7 +11,7 @@ let lang = localStorage.getItem('yinzhu-lang') === 'en' ? 'en' : 'zh';
 const i18n = {
  zh:{
   // entrance (DOM, also updated by JS)
-  entranceLineEn:'/ PERSONAL PORTFOLIO /',
+  entranceLineEn:'/ PORTFOLIO /',
   entranceName:'YIN ZHU · 尹築 2026',
   entranceStatus:'STANDBY · PRESS ENTER',
   entranceIntro:'在噪聲、行為與演算法之間，情緒驅動震盪。',
@@ -68,7 +68,7 @@ const i18n = {
   errReload:'重新開啟作品導覽 →'
  },
  en:{
-  entranceLineEn:'/ PERSONAL PORTFOLIO /',
+  entranceLineEn:'/ PORTFOLIO /',
   entranceName:'YIN ZHU · Yin Zhu 2026',
   entranceStatus:'STANDBY · PRESS ENTER',
   entranceIntro:'Between noise, performance, and algorithm — emotion drives oscillation.',
@@ -181,7 +181,7 @@ function journey(scene){
  function endTouch(e){if(!touch||!window.archiveEntered)return;const dx=touch.x-e.changedTouches[0].clientX,dy=touch.y-e.changedTouches[0].clientY;touch=null;const d=Math.abs(dy)>Math.abs(dx)?dy:dx;if(Math.abs(d)>45&&performance.now()>lockedUntil)setScene(current+(d>0?1:-1));}
  root.addEventListener('wheel',onWheel,{passive:false});window.addEventListener('keydown',onKey);root.addEventListener('touchstart',startTouch,{passive:true});root.addEventListener('touchend',endTouch,{passive:true});
  let alive=true;
- import('./graph.js?v=136').then(({Constellation})=>{if(!alive)return;graph=new Constellation(panel,categories,works,still,lang);graph.setVisible(current===1);applyTraditional(panel);}).catch(e=>{console.error(e);panel.querySelector('.graph-heading').textContent=t('graphLoadError');});
+ import('./graph.js?v=137').then(({Constellation})=>{if(!alive)return;graph=new Constellation(panel,categories,works,still,lang);graph.setVisible(current===1);applyTraditional(panel);}).catch(e=>{console.error(e);panel.querySelector('.graph-heading').textContent=t('graphLoadError');});
  cleanup=()=>{alive=false;graph?.destroy();graph=null;root.removeEventListener('wheel',onWheel);window.removeEventListener('keydown',onKey);};
  wave?.setScene(scene);
 }

@@ -17,7 +17,11 @@ export class Constellation {
    // the other script slips into the meta line as a small bilingual hint.
    const nameLoc=loc(cat.name,cat.en),subLoc=loc(cat.en,cat.name);
    const ariaLoc=loc(`${cat.name}，${cat.works.length}件作品，点击聚焦或拖拽移动`,`${cat.en}, ${cat.works.length} works, click to focus or drag to move`);
-   el.innerHTML=`<button type="button" class="category" data-category="${cat.id}" aria-label="${ariaLoc}" aria-pressed="false"><span class="glyph">${cat.glyph}</span><h2>${nameLoc}</h2><span class="category-meta">${subLoc} / ${String(cat.works.length).padStart(2,'0')}</span></button>`;
+   // Each category title is rendered as two stacked lines so the
+   // style nodes look like concise labels instead of inline strings.
+   // Chinese names split on " / ", English names split on " & ".
+   const nameLines=nameLoc.split(/\s*[/\&]\s*/).join('<br>');
+   el.innerHTML=`<button type="button" class="category" data-category="${cat.id}" aria-label="${ariaLoc}" aria-pressed="false"><span class="glyph">${cat.glyph}</span><h2>${nameLines}</h2><span class="category-meta">${subLoc} / ${String(cat.works.length).padStart(2,'0')}</span></button>`;
    this.scene.appendChild(el);
    const group={...cat,el,button:el.querySelector('button'),base:{x:cat.x,y:cat.y},pos:{x:cat.x,y:cat.y},depth:[-70,45,115,5][ci],velocity:{x:0,y:0},children:[],phase:ci*1.7,line:this.line(false),dragged:false,suppressClick:false};
    cat.works.forEach((id,i)=>{
@@ -149,9 +153,13 @@ export class Constellation {
  orbit(group,i){
   if(this.selected!==group)return group.children[i].overview;
   const n=group.children.length;
-  // Shrink the focused orbit on narrow screens so children stay inside the
-  // viewport after the scale-up. Desktop (w≥700) keeps the full radius.
-  const s=clamp(this.w/700,0.55,1);
+  // Focused orbit radius. Desktop (w≥700) keeps the full radius. On
+  // narrow phones, the camera already scales the whole scene down to
+  // ~w/990, so the orbit in *screen* pixels shrinks naturally — but
+  // shrinking it further with s<0.85 makes the work-nodes overlap the
+  // category button (which on a 390px screen projects to ~110px wide).
+  // Floor of 0.85 keeps children ≥100px clear of the category edge.
+  const s=clamp(this.w/700,0.85,1);
   return n===1?{x:290*s,y:0}:n===2?[{x:-305*s,y:80},{x:305*s,y:80}][i]:[{x:-310*s,y:40},{x:240*s,y:-200},{x:240*s,y:185}][i];
  }
  tick(now){
