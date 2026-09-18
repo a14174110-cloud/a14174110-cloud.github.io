@@ -76,17 +76,27 @@ async function prepare(work){
 }
 export async function mountMedia(host,work,withAscii=true){
  host.setAttribute('aria-label',work.image?`${work.title} 作品图片`:`${work.title} 图片占位，待补充原图`);
+ // Drop a spinner into the host immediately so the empty plate shows
+ // loading feedback instead of a blank box. The spinner is removed
+ // (via .media-ready fade) once the image — or its placeholder — is
+ // actually attached.
+ const spinner=document.createElement('div');
+ spinner.className='media-loading';
+ spinner.setAttribute('aria-hidden','true');
+ host.appendChild(spinner);
+ const finishLoading=()=>{if(host.contains(spinner))spinner.remove();host.classList.add('media-ready');};
  try{
   const key=work.id+work.image;
   if(!cache.has(key))cache.set(key,prepare(work));
   const data=await cache.get(key);
-  if(!host.isConnected)return;
+  if(!host.isConnected){spinner.remove();return;}
   const img=data.image.cloneNode();img.alt=work.image?work.title:'作品图片待补充';img.draggable=false;host.appendChild(img);
   if(withAscii){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=480;canvas.className='ascii-cover';canvas.setAttribute('aria-hidden','true');canvas.getContext('2d').drawImage(data.ascii,0,0);host.appendChild(canvas);}
+  finishLoading();
   host.dataset.ready='true';
  }catch(error){
   // Failed remote images use the same clearly labelled local plate.
-  if(work.image)return mountMedia(host,{...work,image:''},withAscii);
-  host.textContent='作品图片待补充';host.dataset.ready='fallback';console.warn('Image preview unavailable',error);
+  if(work.image){spinner.remove();return mountMedia(host,{...work,image:''},withAscii);}
+  host.textContent='作品图片待补充';finishLoading();host.dataset.ready='fallback';console.warn('Image preview unavailable',error);
  }
 }
