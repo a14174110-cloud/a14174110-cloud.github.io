@@ -23,7 +23,7 @@ const i18n = {
   // graph
   graphEyebrow:'02 / CONSTELLATION',
   graphHeading:'感知的不同路徑',
-  graphInstruction:'選擇分類，進入其感知範圍。',
+  graphInstruction:'',
   graphOverview:'← 返回總覽',
   graphCoreName:'情緒結構<br>藝術',
   graphCoreAria:'情緒結構藝術，查看名詞解釋',
@@ -78,7 +78,7 @@ const i18n = {
   homeScroll:'Enter Works →',
   graphEyebrow:'02 / CONSTELLATION',
   graphHeading:'Paths of Perception',
-  graphInstruction:'Select a category to enter its field of perception.',
+  graphInstruction:'',
   graphOverview:'← Back to overview',
   graphCoreName:'Emotional<br>Structural Art',
   graphCoreAria:'Emotional Structural Art, view definition',
