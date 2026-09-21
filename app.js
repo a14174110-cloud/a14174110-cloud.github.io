@@ -258,7 +258,15 @@ window.addEventListener('resize',()=>{document.querySelectorAll('.video-poster-a
 function bindGalleryToActiveImage(gallery){
  const items=Array.from(gallery.querySelectorAll('.gallery-item'));if(!items.length)return;
  let frame=0;
- const update=()=>{frame=0;const center=gallery.scrollLeft+gallery.clientWidth/2;let active=items[0],distance=Infinity;items.forEach(item=>{const d=Math.abs(item.offsetLeft+item.offsetWidth/2-center);if(d<distance){distance=d;active=item;}});gallery.style.height=`${Math.ceil(active.offsetHeight+20)}px`;};
+ // Grow the carousel container to fit its tallest item so swiping between
+ // a short image and a tall one never clips the latter. Items are sized
+ // by the CSS max-height chain, so they are bounded from above too.
+ const fitHeight=()=>{
+  let max=0;
+  items.forEach(item=>{const h=item.offsetHeight;if(h>max)max=h;});
+  gallery.style.minHeight=`${Math.ceil(max+20)}px`;
+ };
+ const update=()=>{frame=0;fitHeight();};
  const schedule=()=>{if(!frame)frame=requestAnimationFrame(update);};
  gallery.addEventListener('scroll',schedule,{passive:true});
  // Track touch start so we know the finger's release direction.
