@@ -189,6 +189,46 @@ function journey(scene){
  cleanup=()=>{alive=false;graph?.destroy();graph=null;root.removeEventListener('wheel',onWheel);window.removeEventListener('keydown',onKey);};
  wave?.setScene(scene);
 }
+
+// Render the supplied image as ASCII characters inside the target <pre>
+// element. Used as the click-to-play poster background so each work's
+// video thumbnail reads as an "ASCII deconstruction" of its main image,
+// not a generic dark green block. CORS is required (image.crossOrigin
+// = 'anonymous'); every CDN in loadWithFallback returns ACAO:*.
+function renderAsciiArt(target, imageUrl){
+ if(!target||!imageUrl)return;
+ const img=new Image();
+ img.crossOrigin='anonymous';
+ img.onload=()=>{
+  // Pick a column count that fits the visual budget of the poster. 96
+  // columns reads well at 16:9 because monospace chars are roughly 2:1
+  // (h:w), so 96 cols × 27 rows fills the box without overflow.
+  const cols=96;
+  const rows=Math.max(12,Math.round(cols*(img.height/img.width)*0.5));
+  const c=document.createElement('canvas');
+  c.width=cols;c.height=rows;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(img,0,0,cols,rows);
+  let data;
+  try{data=ctx.getImageData(0,0,cols,rows).data;}catch(e){target.textContent='[ IMAGE ]';return;}
+  // Light-to-dark ramp; space is brightest, @ is darkest. The ramp is
+  // deliberately tight so dark image areas read as dense text rather
+  // than collapsing into a single solid block.
+  const ramp=' .,:;+*#%@';
+  let out='';
+  for(let y=0;y<rows;y++){
+   for(let x=0;x<cols;x++){
+    const i=(y*cols+x)*4;
+    const b=(data[i]+data[i+1]+data[i+2])/3/255;
+    out+=ramp[Math.min(ramp.length-1,Math.floor(b*ramp.length))];
+   }
+   out+='\n';
+  }
+  target.textContent=out;
+ };
+ img.onerror=()=>{target.textContent='[ IMAGE ]';};
+ img.src=imageUrl;
+}
 function bindGalleryToActiveImage(gallery){
  const items=Array.from(gallery.querySelectorAll('.gallery-item'));if(!items.length)return;
  let frame=0;
@@ -252,7 +292,7 @@ function detail(w){
  const title=tx(w,'title'),en=tx(w,'en'),year=tx(w,'year'),type=tx(w,'type'),tags=w.tags.join(' / '),lead=tx(w,'lead');
  const concept=tx(w,'concept'),tech=tx(w,'tech');
  app.innerHTML=`<article class="detail detail-enter"><a class="back-link" href="#/works?field=${w.category}">${t('detailBack')}</a><header class="detail-top"><p class="eyebrow">WORK ${String(index+1).padStart(2,'0')} / ${year}</p><h1>${title}</h1><p class="english">${en}</p><div class="detail-meta"><span>${type}</span><span>${tags}</span></div><p class="detail-lead">${lead}</p></header><figure class="detail-image"><div class="media" data-media="${w.id}"></div><figcaption>${w.image?t('detailFigcaption'):t('detailFigcaptionPending')}</figcaption></figure><section class="detail-copy"><h2>${t('detailCopy1')}</h2><div>${concept.map(p=>`<p>${p}</p>`).join('')}</div></section><section class="detail-copy"><h2>${t('detailCopy2')}</h2><div><p>${tech}</p></div></section><div class="media-slots"><section class="media-slot"><h2 class="mono">${t('detailVideoTitle')}</h2>${w.video?`<video controls preload="metadata" src="${w.video}"></video>`:`<p>${t('detailVideoEmpty')}</p>`}</section><section class="media-slot"><h2 class="mono">${t('detailAudioTitle')}</h2>${w.audio?`<audio controls preload="metadata" src="${w.audio}"></audio>`:`<p>${t('detailAudioEmpty')}</p>`}</section></div><nav class="detail-nav"><a href="#/works">${t('detailBackWorks')}</a><a href="#/works/${next.id}"><span>${t('detailNext')}</span><span>${next.title} →</span></a></nav></article>`;
- app.querySelector('.detail-image').classList.toggle('natural-main',Boolean(w.mainNatural));const slots=app.querySelector('.media-slots');if(w.video){const sep=w.video.includes('?')?'&':'?';const watchUrl=(w.video.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/)||[])[1];slots.innerHTML=`<section class="media-slot media-video"><h2 class="mono">${t('detailVideoTitle')}</h2><button class="video-poster" type="button" aria-label="${t('detailVideoPlay')}"><span class="video-poster-play" aria-hidden="true">▶</span><span class="video-poster-label mono">${t('detailVideoPlay')}</span></button>${watchUrl?`<a class="video-watch" href="https://www.youtube.com/watch?v=${watchUrl}" target="_blank" rel="noopener">${t('detailVideoWatch')}</a>`:''}</section>`;const poster=slots.querySelector('.video-poster');poster.addEventListener('click',()=>{const iframe=document.createElement('iframe');iframe.src=`${w.video}${sep}playsinline=1&autoplay=1`;iframe.title=`${title} 影像记录`;iframe.loading='lazy';iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');iframe.setAttribute('allowfullscreen','');iframe.setAttribute('playsinline','');poster.replaceWith(iframe);},{once:true});}else slots.remove();if(w.hideTech)app.querySelectorAll('.detail-copy')[1]?.remove();
+ app.querySelector('.detail-image').classList.toggle('natural-main',Boolean(w.mainNatural));const slots=app.querySelector('.media-slots');if(w.video){const sep=w.video.includes('?')?'&':'?';const watchUrl=(w.video.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/)||[])[1];const posterImage=w.image||(w.gallery&&w.gallery[0])||'';slots.innerHTML=`<section class="media-slot media-video"><h2 class="mono">${t('detailVideoTitle')}</h2><button class="video-poster" type="button" aria-label="${t('detailVideoPlay')}" data-image="${posterImage}"><pre class="video-poster-ascii" aria-hidden="true">${posterImage?'[ LOADING IMAGE ]':''}</pre><span class="video-poster-button mono">[ PLAY ]</span><span class="video-poster-label mono">${t('detailVideoPlay')}</span></button>${watchUrl?`<a class="video-watch" href="https://www.youtube.com/watch?v=${watchUrl}" target="_blank" rel="noopener">${t('detailVideoWatch')}</a>`:''}</section>`;const poster=slots.querySelector('.video-poster');renderAsciiArt(poster.querySelector('.video-poster-ascii'),posterImage);poster.addEventListener('click',()=>{const iframe=document.createElement('iframe');iframe.src=`${w.video}${sep}playsinline=1&autoplay=1`;iframe.title=`${title} 影像记录`;iframe.loading='lazy';iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');iframe.setAttribute('allowfullscreen','');iframe.setAttribute('playsinline','');poster.replaceWith(iframe);},{once:true});}else slots.remove();if(w.hideTech)app.querySelectorAll('.detail-copy')[1]?.remove();
  if(w.gallery?.length){const gallery=document.createElement('section');gallery.className='detail-gallery';gallery.setAttribute('aria-label',`${title} image archive`);gallery.innerHTML=`<div class="gallery-heading"><span class="eyebrow">${t('detailGalleryHeading')}</span><span class="mono">${String(w.gallery.length).padStart(2,'0')} VIEWS</span></div><div class="gallery-grid">${w.gallery.map((_,i)=>`<figure class="gallery-item"><div class="media" data-gallery="${i}"></div><figcaption class="mono">[ IMAGE ${String(i+2).padStart(2,'0')} ]</figcaption></figure>`).join('')}</div>`;app.querySelector('.detail-copy').after(gallery);}
  import('./media.js').then(({mountMedia})=>{const tasks=[];const host=app.querySelector(`[data-media="${w.id}"]`);if(host)tasks.push(mountMedia(host,w,false));app.querySelectorAll('[data-gallery]').forEach(host=>tasks.push(mountMedia(host,{...w,image:w.gallery[Number(host.dataset.gallery)]},false)));Promise.all(tasks).then(()=>{const gallery=app.querySelector('.gallery-grid');if(gallery)bindGalleryToActiveImage(gallery);});});
  typeDetailText();wave?.setScene(2);
