@@ -106,7 +106,7 @@
    [ PLAY ] button that always reads as text, never an icon glyph. */
 .media-video .video-poster{position:relative;width:100%;aspect-ratio:16/9;background:#090a0b;border:1px solid var(--rule);color:var(--muted);font:inherit;cursor:pointer;overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center}
 .media-video .video-poster:hover{border-color:#2c302d}
-.media-video .video-poster-ascii{position:absolute;inset:0;margin:0;padding:14px;font:5px/5px var(--mono);color:#7d857c;white-space:pre;overflow:hidden;letter-spacing:0;display:flex;align-items:center;justify-content:center;text-align:center;transition:color .3s var(--ease),filter .3s var(--ease)}
+.media-video .video-poster-ascii{position:absolute;left:0;top:0;margin:0;padding:0;font:5px/5px var(--mono);color:#7d857c;white-space:pre;overflow:hidden;letter-spacing:0;transform-origin:0 0;transition:color .3s var(--ease),filter .3s var(--ease);pointer-events:none;will-change:transform}
 .media-video .video-poster:hover .video-poster-ascii{color:#9aa098;filter:contrast(1.1)}
 .media-video .video-poster-button{position:relative;z-index:1;font:13px var(--mono);letter-spacing:.32em;color:var(--text);background:rgba(9,10,11,.85);padding:11px 22px;border:1px solid var(--rule);transition:color .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease)}
 .media-video .video-poster:hover .video-poster-button{color:var(--accent);border-color:var(--accent)}

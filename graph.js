@@ -192,10 +192,22 @@ export class Constellation {
    this.setLine(g.line,g.pos.x,g.pos.y,center.x,center.y,now);
    for(let i=0;i<g.children.length;i++){
     const child=g.children[i],target=this.orbit(g,i);child.offset.x=mix(child.offset.x,target.x,lerp);child.offset.y=mix(child.offset.y,target.y,lerp);
-    const drift=this.still?{x:0,y:0,z:0}:{x:Math.sin(now*.00052+g.phase+i*2.1)*3,y:Math.cos(now*.00044+g.phase+i*1.7)*3.5,z:Math.sin(now*.00038+g.phase+i*1.3)*24};
-    const cp=this.project(g.base.x+fx+child.offset.x+drift.x,g.base.y+fy+child.offset.y+drift.y,this.selected?0:z-65+drift.z+(i-1)*30);
+    // Overview mode lets work-nodes drift visibly so the signal lines
+    // between group center and each child feel alive; focused mode
+    // keeps them still so the user can read text and hit small targets.
+    const focused=this.selected===g;
+    const ampMul=focused?1:2.4;
+    const drift=this.still?{x:0,y:0,z:0}:{x:Math.sin(now*.00052+g.phase+i*2.1)*3*ampMul,y:Math.cos(now*.00044+g.phase+i*1.7)*3.5*ampMul,z:Math.sin(now*.00038+g.phase+i*1.3)*24*ampMul};
+    // In overview, push children deeper (more negative z) so they read
+    // smaller; in focused view they sit at z=0 which yields scale≈1.
+    const overviewZ=g.depth-220+drift.z+(i-1)*30;
+    const cp=this.project(g.base.x+fx+child.offset.x+drift.x,g.base.y+fy+child.offset.y+drift.y,focused?0:overviewZ);
     child.pos=cp;
-    child.el.style.transform=`translate(${cp.x-g.pos.x}px,${cp.y-g.pos.y}px) translate(-50%,-50%) scale(${cp.scale})`;
+    // Apply a flat scale reduction in overview regardless of how the
+    // projection itself behaved. The 0.68 multiplier keeps the nodes
+    // clearly secondary to the category button while still legible.
+    const sizeMul=focused?1:0.68;
+    child.el.style.transform=`translate(${cp.x-g.pos.x}px,${cp.y-g.pos.y}px) translate(-50%,-50%) scale(${cp.scale*sizeMul})`;
     this.setLine(child.line,g.pos.x,g.pos.y,cp.x,cp.y,now);
    }
   }

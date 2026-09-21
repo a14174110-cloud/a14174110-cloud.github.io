@@ -210,7 +210,7 @@ function renderAsciiArt(target, imageUrl){
   const ctx=c.getContext('2d');
   ctx.drawImage(img,0,0,cols,rows);
   let data;
-  try{data=ctx.getImageData(0,0,cols,rows).data;}catch(e){target.textContent='[ IMAGE ]';return;}
+  try{data=ctx.getImageData(0,0,cols,rows).data;}catch(e){target.textContent='[ IMAGE ]';fitAsciiToBox(target);return;}
   // Light-to-dark ramp; space is brightest, @ is darkest. The ramp is
   // deliberately tight so dark image areas read as dense text rather
   // than collapsing into a single solid block.
@@ -225,10 +225,36 @@ function renderAsciiArt(target, imageUrl){
    out+='\n';
   }
   target.textContent=out;
+  fitAsciiToBox(target);
  };
- img.onerror=()=>{target.textContent='[ IMAGE ]';};
+ img.onerror=()=>{target.textContent='[ IMAGE ]';fitAsciiToBox(target);};
  img.src=imageUrl;
 }
+// Stretch the ASCII <pre> to fill the entire poster box. Without this the
+// text sits at its natural font-size and leaves black bars on every edge.
+// We use non-uniform scaleX/scaleY so the chars actually reach the box edges
+// instead of letterboxing. transformOrigin is top-left so the scaled text
+// grows toward the bottom-right, anchoring at the box's top-left corner.
+function fitAsciiToBox(pre){
+ if(!pre)return;
+ const parent=pre.parentElement;
+ if(!parent)return;
+ const boxW=parent.clientWidth;
+ const boxH=parent.clientHeight;
+ if(!boxW||!boxH){requestAnimationFrame(()=>fitAsciiToBox(pre));return;}
+ pre.style.transform='none';
+ pre.style.transformOrigin='0 0';
+ void pre.offsetWidth;
+ const naturalW=pre.scrollWidth;
+ const naturalH=pre.scrollHeight;
+ if(!naturalW||!naturalH){requestAnimationFrame(()=>fitAsciiToBox(pre));return;}
+ const scaleX=boxW/naturalW;
+ const scaleY=boxH/naturalH;
+ pre.style.transform=`scale(${scaleX},${scaleY})`;
+}
+// Re-fit every ASCII poster on viewport resize / device rotation so the
+// background keeps edge-to-edge coverage.
+window.addEventListener('resize',()=>{document.querySelectorAll('.video-poster-ascii').forEach(fitAsciiToBox);});
 function bindGalleryToActiveImage(gallery){
  const items=Array.from(gallery.querySelectorAll('.gallery-item'));if(!items.length)return;
  let frame=0;
